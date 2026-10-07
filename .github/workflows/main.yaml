@@ -104,4 +104,3 @@ jobs:
             sudo systemctl status tomcat9 --no-pager
 
             echo "Deployment completed!"
-```
