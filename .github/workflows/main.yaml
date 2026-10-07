@@ -81,7 +81,7 @@ jobs:
           host: ${{ secrets.TOMCAT_HOST }}
           username: ubuntu
           key: ${{ secrets.TOMCAT_SSH_KEY }}
-          source: "target/*.war"
+          source: "target/TrainBook-1.0.0-SNAPSHOT.war"
           target: "/tmp/"
 
       # --------------------------------------
