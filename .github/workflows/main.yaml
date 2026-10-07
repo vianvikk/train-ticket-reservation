@@ -138,7 +138,7 @@ jobs:
             echo "Copying new WAR"
             echo "======================================"
 
-            sudo cp /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+            sudo cp /tmp/target/TrainBook-1.0.0-SNAPSHOT.war \
               /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
 
             echo "======================================"
