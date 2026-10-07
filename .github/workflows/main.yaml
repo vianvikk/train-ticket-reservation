@@ -108,6 +108,7 @@ jobs:
           key: ${{ secrets.TOMCAT_SSH_KEY }}
 
           script: |
+            set -e
 
             echo "======================================"
             echo "Starting deployment"
