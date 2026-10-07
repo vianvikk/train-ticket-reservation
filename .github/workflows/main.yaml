@@ -1,5 +1,5 @@
-
-name: Maven CI CD - Tomcat Deployment
+```yaml
+name: Maven CI CD - TrainBook
 
 on:
   push:
@@ -10,15 +10,15 @@ on:
 
 jobs:
 
-  # =========================
-  # CI - BUILD AND TEST
-  # =========================
+  # ==========================================
+  # BUILD
+  # ==========================================
   build:
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout Source
+      - name: Checkout Source Code
         uses: actions/checkout@v4
 
       - name: Setup Java 8
@@ -28,49 +28,54 @@ jobs:
           java-version: '8'
           cache: maven
 
-      - name: Validate with Maven
+      - name: Validate Maven Project
         run: mvn validate
 
-      - name: Compile with Maven
+      - name: Compile Application
         run: mvn compile
 
-      - name: Test with Maven
+      - name: Run Tests
         run: mvn test
 
-      - name: Package with Maven
+      - name: Build WAR
         run: mvn clean package
 
-      - name: Verify WAR file
-        run: ls -lh target/
+      - name: Verify WAR
+        run: |
+          echo "Generated WAR:"
+          ls -lh target/*.war
 
-      # Upload WAR file for deployment job
-      - name: Upload WAR artifact
+      - name: Upload WAR Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: myapp-war
+          name: trainbook-war
           path: target/*.war
 
 
-  # =========================
-  # CD - DEPLOY TO TOMCAT
-  # =========================
+  # ==========================================
+  # DEPLOY
+  # ==========================================
   deploy:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Download WAR artifact
+      - name: Download WAR Artifact
         uses: actions/download-artifact@v4
         with:
-          name: myapp-war
+          name: trainbook-war
           path: target/
 
-      - name: Verify downloaded WAR
-        run: ls -lh target/
+      - name: Verify Downloaded WAR
+        run: |
+          echo "WAR downloaded:"
+          ls -lh target/*.war
 
-      # Copy WAR to Tomcat server
-      - name: Copy WAR to Tomcat server
+      # --------------------------------------
+      # COPY WAR TO EC2
+      # --------------------------------------
+      - name: Copy WAR to EC2
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.TOMCAT_HOST }}
@@ -79,28 +84,71 @@ jobs:
           source: "target/*.war"
           target: "/tmp/"
 
-      # Deploy WAR on Tomcat
-      - name: Deploy WAR to Tomcat
+      # --------------------------------------
+      # DEPLOY TO TOMCAT
+      # --------------------------------------
+      - name: Deploy to Tomcat 9
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.TOMCAT_HOST }}
           username: ubuntu
           key: ${{ secrets.TOMCAT_SSH_KEY }}
+
           script: |
-            echo "Stopping Tomcat..."
-            sudo systemctl stop tomcat9
 
-            echo "Removing previous application..."
-            sudo rm -rf /var/lib/tomcat9/webapps/myapp
-            sudo rm -f /var/lib/tomcat9/webapps/myapp.war
+            echo "======================================"
+            echo "Starting deployment"
+            echo "======================================"
 
-            echo "Copying new WAR..."
-            sudo cp /tmp/*.war /var/lib/tomcat9/webapps/myapp.war
+            echo "Stopping Tomcat 9..."
 
-            echo "Starting Tomcat..."
-            sudo systemctl start tomcat9
+            sudo /root/apache_tomcat/bin/shutdown.sh || true
 
-            echo "Checking Tomcat status..."
-            sudo systemctl status tomcat9 --no-pager
+            echo "Waiting for Tomcat to stop..."
+            sleep 5
 
-            echo "Deployment completed!"
+            echo "Checking port 8080..."
+
+            if sudo ss -ltnp | grep -q ':8080'; then
+              echo "Tomcat is still running. Waiting..."
+              sleep 5
+            fi
+
+            echo "======================================"
+            echo "Removing previous TrainBook application"
+            echo "======================================"
+
+            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "======================================"
+            echo "Copying new WAR"
+            echo "======================================"
+
+            sudo cp /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "======================================"
+            echo "Starting Tomcat 9"
+            echo "======================================"
+
+            sudo /root/apache_tomcat/bin/startup.sh
+
+            echo "Waiting for Tomcat to start..."
+            sleep 10
+
+            echo "======================================"
+            echo "Checking Tomcat port"
+            echo "======================================"
+
+            sudo ss -ltnp | grep ':8080'
+
+            echo "======================================"
+            echo "Checking deployed WAR"
+            echo "======================================"
+
+            sudo ls -lh /root/apache_tomcat/webapps/
+
+            echo "======================================"
+            echo "Deployment completed successfully!"
+            echo "======================================"
