@@ -53,9 +53,9 @@ jobs:
 
 
   # ==========================================
-  # DEPLOY
+  # DEPLOY TO DEV
   # ==========================================
-  deploy:
+  deploy-dev:
     needs: build
     runs-on: ubuntu-latest
 
@@ -73,39 +73,39 @@ jobs:
           ls -lh target/*.war
 
       # --------------------------------------
-      # COPY WAR TO EC2
+      # COPY WAR TO DEV EC2
       # --------------------------------------
       - name: Copy WAR to EC2
         uses: appleboy/scp-action@v1
         with:
-          host: ${{ secrets.TOMCAT_HOST }}
+          host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
-          key: ${{ secrets.TOMCAT_SSH_KEY }}
+          key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
           source: "target/TrainBook-1.0.0-SNAPSHOT.war"
           target: "/tmp/"
 
       # --------------------------------------
-      # VERIFY WAR ON EC2
+      # VERIFY WAR ON DEV EC2
       # --------------------------------------
       - name: Verify WAR on EC2
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.TOMCAT_HOST }}
+          host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
-          key: ${{ secrets.TOMCAT_SSH_KEY }}
+          key: ${{ secrets.TOMCAT_SSH_KEY_ DEV }}
           script: |
             echo "Searching for WAR on EC2..."
             sudo find /tmp -maxdepth 3 -type f -name "*.war" -ls
 
       # --------------------------------------
-      # DEPLOY TO TOMCAT
+      # DEPLOY TO DEV TOMCAT
       # --------------------------------------
       - name: Deploy to Tomcat 9
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.TOMCAT_HOST }}
+          host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
-          key: ${{ secrets.TOMCAT_SSH_KEY }}
+          key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
 
           script: |
             set -e
