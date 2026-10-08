@@ -92,7 +92,7 @@ jobs:
         with:
           host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
-          key: ${{ secrets.TOMCAT_SSH_KEY_ DEV }}
+          key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
           script: |
             echo "Searching for WAR on EC2..."
             sudo find /tmp -maxdepth 3 -type f -name "*.war" -ls
