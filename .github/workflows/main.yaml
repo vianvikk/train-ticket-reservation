@@ -143,20 +143,9 @@ jobs:
           username: ubuntu
           key: ${{ secrets.TOMCAT_SSH_KEY_STAGING }}
           script: |
-            sudo /root/apache_tomcat/bin/shutdown.sh || true
-
-            sleep 5
-
-            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
-            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
-
-            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
-              /root/apache_tomcat/webapps/
-
-            sudo /root/apache_tomcat/bin/startup.sh
-
-            sleep 15
-
-            echo "STAGING deployment completed"
-
-            sudo ls -lh /root/apache_tomcat/webapps/
+            echo "===== STAGING SERVER ====="
+            hostname
+            echo "===== PUBLIC IP ====="
+            curl -s http://checkip.amazonaws.com
+            echo "===== WAR IN /tmp ====="
+            ls -lh /tmp/TrainBook-1.0.0-SNAPSHOT.war
