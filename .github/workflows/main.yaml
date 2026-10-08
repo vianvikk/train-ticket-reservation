@@ -52,12 +52,15 @@ jobs:
           path: target/*.war
 
 
-  # ==========================================
+ # ==========================================
   # DEPLOY TO DEV
   # ==========================================
+
   deploy-dev:
     needs: build
     runs-on: ubuntu-latest
+
+    environment: DEV
 
     steps:
 
@@ -67,102 +70,93 @@ jobs:
           name: trainbook-war
           path: target/
 
-      - name: Verify Downloaded WAR
-        run: |
-          echo "WAR downloaded:"
-          ls -lh target/*.war
+      - name: Verify DEV WAR
+        run: ls -lh target/
 
-      # --------------------------------------
-      # COPY WAR TO DEV EC2
-      # --------------------------------------
-      - name: Copy WAR to EC2
+      - name: Copy WAR to DEV EC2
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
           key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
-          source: "target/TrainBook-1.0.0-SNAPSHOT.war"
-          target: "/tmp/"
+          source: target/TrainBook-1.0.0-SNAPSHOT.war
+          target: /tmp/
 
-      # --------------------------------------
-      # VERIFY WAR ON DEV EC2
-      # --------------------------------------
-      - name: Verify WAR on EC2
+      - name: Deploy WAR on DEV Tomcat
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.TOMCAT_HOST_DEV }}
           username: ubuntu
           key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
           script: |
-            echo "Searching for WAR on EC2..."
-            sudo find /tmp -maxdepth 3 -type f -name "*.war" -ls
-
-      # --------------------------------------
-      # DEPLOY TO DEV TOMCAT
-      # --------------------------------------
-      - name: Deploy to Tomcat 9
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.TOMCAT_HOST_DEV }}
-          username: ubuntu
-          key: ${{ secrets.TOMCAT_SSH_KEY_DEV }}
-
-          script: |
-            set -e
-
-            echo "======================================"
-            echo "Starting deployment"
-            echo "======================================"
-
-            echo "Stopping Tomcat 9..."
-
             sudo /root/apache_tomcat/bin/shutdown.sh || true
 
-            echo "Waiting for Tomcat to stop..."
             sleep 5
-
-            echo "Checking port 8080..."
-
-            if sudo ss -ltnp | grep -q ':8080'; then
-              echo "Tomcat is still running. Waiting..."
-              sleep 5
-            fi
-
-            echo "======================================"
-            echo "Removing previous TrainBook application"
-            echo "======================================"
 
             sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
             sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
 
-            echo "======================================"
-            echo "Copying new WAR"
-            echo "======================================"
-
-            sudo cp /tmp/target/TrainBook-1.0.0-SNAPSHOT.war \
-              /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
-
-            echo "======================================"
-            echo "Starting Tomcat 9"
-            echo "======================================"
+            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/
 
             sudo /root/apache_tomcat/bin/startup.sh
 
-            echo "Waiting for Tomcat to start..."
-            sleep 10
+            sleep 15
 
-            echo "======================================"
-            echo "Checking Tomcat port"
-            echo "======================================"
-
-            sudo ss -ltnp | grep ':8080'
-
-            echo "======================================"
-            echo "Checking deployed WAR"
-            echo "======================================"
+            echo "DEV deployment completed"
 
             sudo ls -lh /root/apache_tomcat/webapps/
+  # ==========================================
+  # DEPLOY TO STAGING
+  # ==========================================
 
-            echo "======================================"
-            echo "Deployment completed successfully!"
-            echo "======================================"
+  deploy-staging:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+
+    environment: STAGING
+
+    steps:
+
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trainbook-war
+          path: target/
+
+      - name: Verify STAGING WAR
+        run: ls -lh target/
+
+      - name: Copy WAR to STAGING EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_STAGING }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_STAGING }}
+          source: target/TrainBook-1.0.0-SNAPSHOT.war
+          target: /tmp/
+
+      - name: Deploy WAR on STAGING Tomcat
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_STAGING }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_STAGING }}
+          script: |
+            sudo /root/apache_tomcat/bin/shutdown.sh || true
+
+            sleep 5
+
+            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/
+
+            sudo /root/apache_tomcat/bin/startup.sh
+
+            sleep 15
+
+            echo "STAGING deployment completed"
+
+            sudo ls -lh /root/apache_tomcat/webapps/
