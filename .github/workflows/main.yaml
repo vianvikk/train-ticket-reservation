@@ -135,8 +135,9 @@ jobs:
           key: ${{ secrets.TOMCAT_SSH_KEY_STAGING }}
           source: target/TrainBook-1.0.0-SNAPSHOT.war
           target: /tmp/
+          strip_components: 1
 
-      - name: Deploy WAR on STAGING Tomcat
+      - name: Find WAR on STAGING EC2
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.TOMCAT_HOST_STAGING }}
@@ -145,7 +146,47 @@ jobs:
           script: |
             echo "===== STAGING SERVER ====="
             hostname
+
             echo "===== PUBLIC IP ====="
             curl -s http://checkip.amazonaws.com
-            echo "===== WAR IN /tmp ====="
-            ls -lh /tmp/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "===== SEARCH FOR TRAINBOOK WAR ====="
+            sudo find /tmp -maxdepth 3 -type f -iname "*TrainBook*" -ls
+
+            echo "===== FULL /tmp LIST ====="
+            sudo ls -lah /tmp/
+
+            echo "===== EXPECTED WAR ====="
+            sudo ls -lh /tmp/TrainBook-1.0.0-SNAPSHOT.war
+
+      - name: Deploy WAR on STAGING Tomcat
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_STAGING }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_STAGING }}
+          script: |
+            set -e
+
+            echo "===== STOP TOMCAT ====="
+            sudo /root/apache_tomcat/bin/shutdown.sh || true
+            sleep 5
+
+            echo "===== REMOVE OLD APPLICATION ====="
+            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "===== MOVE NEW WAR ====="
+            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/
+
+            echo "===== START TOMCAT ====="
+            sudo /root/apache_tomcat/bin/startup.sh
+
+            sleep 15
+
+            echo "===== VERIFY DEPLOYMENT ====="
+            sudo ls -lh /root/apache_tomcat/webapps/
+
+            echo "===== VERIFY APPLICATION ====="
+            curl -I http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
