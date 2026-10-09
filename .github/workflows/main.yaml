@@ -306,7 +306,7 @@ jobs:
   # DEPLOY TO PROD
   # ==========================================
 
-  deploy-staging:
+  deploy-prod:
     needs: deploy-preprod
     runs-on: ubuntu-latest
 
