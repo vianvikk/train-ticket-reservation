@@ -218,3 +218,171 @@ jobs:
 
             echo "===== VERIFY APPLICATION ====="
             curl -I http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
+# ==========================================
+  # DEPLOY TO PREPROD
+  # ==========================================
+
+  deploy-preprod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+
+    environment: PREPROD
+
+    steps:
+
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trainbook-war
+          path: target/
+
+      - name: Verify STAGING WAR
+        run: ls -lh target/
+
+      - name: Copy WAR to STAGING EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PREPROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PREPROD }}
+          source: target/TrainBook-1.0.0-SNAPSHOT.war
+          target: /tmp/
+          strip_components: 1
+
+      - name: Find WAR on PREPROD EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PREPROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PREPROD }}
+          script: |
+            echo "===== PREPROD SERVER ====="
+            hostname
+
+            echo "===== PUBLIC IP ====="
+            curl -s http://checkip.amazonaws.com
+
+            echo "===== SEARCH FOR TRAINBOOK WAR ====="
+            sudo find /tmp -maxdepth 3 -type f -iname "*TrainBook*" -ls
+
+            echo "===== FULL /tmp LIST ====="
+            sudo ls -lah /tmp/
+
+            echo "===== EXPECTED WAR ====="
+            sudo ls -lh /tmp/TrainBook-1.0.0-SNAPSHOT.war
+
+      - name: Deploy WAR on PREPROD Tomcat
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PREPROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PREPROD }}
+          script: |
+            set -e
+
+            echo "===== STOP TOMCAT ====="
+            sudo /root/apache_tomcat/bin/shutdown.sh || true
+            sleep 5
+
+            echo "===== REMOVE OLD APPLICATION ====="
+            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "===== MOVE NEW WAR ====="
+            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/
+
+            echo "===== START TOMCAT ====="
+            sudo /root/apache_tomcat/bin/startup.sh
+
+            sleep 15
+
+            echo "===== VERIFY DEPLOYMENT ====="
+            sudo ls -lh /root/apache_tomcat/webapps/
+
+            echo "===== VERIFY APPLICATION ====="
+            curl -I http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
+# ==========================================
+  # DEPLOY TO PROD
+  # ==========================================
+
+  deploy-staging:
+    needs: deploy-preprod
+    runs-on: ubuntu-latest
+
+    environment: PROD
+
+    steps:
+
+      - name: Download WAR Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: trainbook-war
+          path: target/
+
+      - name: Verify PROD WAR
+        run: ls -lh target/
+
+      - name: Copy WAR to PROD EC2
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PROD }}
+          source: target/TrainBook-1.0.0-SNAPSHOT.war
+          target: /tmp/
+          strip_components: 1
+
+      - name: Find WAR on PROD EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PROD }}
+          script: |
+            echo "===== PROD SERVER ====="
+            hostname
+
+            echo "===== PUBLIC IP ====="
+            curl -s http://checkip.amazonaws.com
+
+            echo "===== SEARCH FOR TRAINBOOK WAR ====="
+            sudo find /tmp -maxdepth 3 -type f -iname "*TrainBook*" -ls
+
+            echo "===== FULL /tmp LIST ====="
+            sudo ls -lah /tmp/
+
+            echo "===== EXPECTED WAR ====="
+            sudo ls -lh /tmp/TrainBook-1.0.0-SNAPSHOT.war
+
+      - name: Deploy WAR on PROD Tomcat
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.TOMCAT_HOST_PROD }}
+          username: ubuntu
+          key: ${{ secrets.TOMCAT_SSH_KEY_PROD }}
+          script: |
+            set -e
+
+            echo "===== STOP TOMCAT ====="
+            sudo /root/apache_tomcat/bin/shutdown.sh || true
+            sleep 5
+
+            echo "===== REMOVE OLD APPLICATION ====="
+            sudo rm -rf /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT
+            sudo rm -f /root/apache_tomcat/webapps/TrainBook-1.0.0-SNAPSHOT.war
+
+            echo "===== MOVE NEW WAR ====="
+            sudo mv /tmp/TrainBook-1.0.0-SNAPSHOT.war \
+              /root/apache_tomcat/webapps/
+
+            echo "===== START TOMCAT ====="
+            sudo /root/apache_tomcat/bin/startup.sh
+
+            sleep 15
+
+            echo "===== VERIFY DEPLOYMENT ====="
+            sudo ls -lh /root/apache_tomcat/webapps/
+
+            echo "===== VERIFY APPLICATION ====="
+            curl -I http://localhost:8080/TrainBook-1.0.0-SNAPSHOT/
