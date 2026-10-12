@@ -50,6 +50,12 @@ jobs:
         with:
           name: trainbook-war
           path: target/*.war
+      - name: sonarqube
+        run: |
+          mvn clean verify sonar:sonar \
+            -Dsonar.projectKey=TrainBook \
+            -Dsonar.host.url="${{ secrets.SONAR_HOST }}" \
+            -Dsonar.login="${{ secrets.SONAR_TOKEN }}"   
 
 
 # ==========================================
